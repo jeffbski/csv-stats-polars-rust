@@ -44,6 +44,7 @@ fn main() -> Result<()> {
     };
 
     // Print the results line by line.
+    println!("Output for rust-polars");
     println!("--- Statistics for '{}' ---", cli.column_name);
     println!("Count: {}", stats.count);
     println!("Min:   {}", format_opt(stats.min));
