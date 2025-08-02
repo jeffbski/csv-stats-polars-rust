@@ -1,7 +1,6 @@
 use anyhow::Result;
 use clap::Parser;
 use polars::prelude::*;
-use std::path::PathBuf;
 
 /// A CLI tool to calculate statistics for a numeric column in a CSV file.
 #[derive(Parser, Debug)]
@@ -9,7 +8,7 @@ use std::path::PathBuf;
 struct Cli {
     /// The path to the CSV file.
     #[arg(short, long)]
-    file_path: PathBuf,
+    file_path: String,
 
     /// The name of the column to analyze.
     #[arg(short, long, default_value = "Amount Received")]
@@ -59,9 +58,9 @@ fn main() -> Result<()> {
 ///
 /// This function uses the Polars lazy API to build an optimized query plan,
 /// which is ideal for performance on large datasets.
-fn process_csv(file_path: &PathBuf, column_name: &str) -> Result<SelectedStats> {
+fn process_csv(file_path: &str, column_name: &str) -> Result<SelectedStats> {
     // Create a LazyFrame from the CSV file. This does not read the file yet, only sets up the plan.
-    let lf = LazyCsvReader::new(file_path.clone())
+    let lf = LazyCsvReader::new(PlPath::from_str(file_path))
         .with_has_header(true)
         .with_infer_schema_length(Some(100))
         .finish()?;
@@ -83,7 +82,9 @@ fn process_csv(file_path: &PathBuf, column_name: &str) -> Result<SelectedStats> 
 
     // Execute the query. This materializes the result into a DataFrame.
     // The resulting DataFrame will have a single row with our calculated stats.
-    let stats_df = lf.select(aggregations).collect()?;
+    let stats_df = lf
+        .select(aggregations)
+        .collect_with_engine(Engine::Streaming)?;
 
     // Helper to extract an optional f64 stat value from the results DataFrame.
     // The DataFrame has only one row, so we always get the value at index 0.
